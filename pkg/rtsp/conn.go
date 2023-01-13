@@ -554,7 +554,7 @@ func (c *Conn) Accept() error {
 		case MethodOptions:
 			res := &tcp.Response{
 				Header: map[string][]string{
-					"Public": {"OPTIONS, SETUP, TEARDOWN, DESCRIBE, PLAY, PAUSE, ANNOUNCE, RECORD"},
+					"Public": {"OPTIONS, SETUP, DESCRIBE, PLAY, PAUSE, ANNOUNCE, RECORD"},
 				},
 				Request: req,
 			}
