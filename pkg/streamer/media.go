@@ -191,7 +191,14 @@ func MarshalSDP(medias []*Media) ([]byte, error) {
 			SessionVersion:	uint64(0),
 			NetworkType:    "IN",
 			AddressType:    "IP4",
-			UnicastAddress: "0.0.0.0",
+			UnicastAddress: "127.0.0.1",
+		},
+		ConnectionInformation: &sdp.ConnectionInformation{
+			NetworkType: "IN",
+			AddressType: "IP4",
+			Address: &sdp.Address{
+				Address: "0.0.0.0",
+			},
 		},
 	}
 
