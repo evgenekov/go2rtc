@@ -2,46 +2,75 @@ package app
 
 import (
 	"flag"
+	"github.com/AlexxIT/go2rtc/pkg/shell"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
+	"strings"
 )
 
-var Version = "0.1-rc.7"
+var Version = "0.1-rc.9"
 var UserAgent = "go2rtc/" + Version
 
-func Init() {
-	config := flag.String(
-		"config",
-		"go2rtc.yaml",
-		"Path to go2rtc configuration file",
-	)
+var ConfigPath string
+var Info = map[string]interface{}{
+	"version": Version,
+}
 
+func Init() {
+	var confs Config
+
+	flag.Var(&confs, "config", "go2rtc config (path to file or raw text), support multiple")
 	flag.Parse()
 
-	data, _ = os.ReadFile(*config)
+	if confs == nil {
+		confs = []string{"go2rtc.yaml"}
+	}
+
+	for _, conf := range confs {
+		if conf[0] != '{' {
+			// config as file
+			if ConfigPath == "" {
+				ConfigPath = conf
+			}
+
+			data, _ := os.ReadFile(conf)
+			if data == nil {
+				continue
+			}
+
+			data = []byte(shell.ReplaceEnvVars(string(data)))
+			configs = append(configs, data)
+		} else {
+			// config as raw YAML
+			configs = append(configs, []byte(conf))
+		}
+	}
+
+	if ConfigPath != "" {
+		if !filepath.IsAbs(ConfigPath) {
+			if cwd, err := os.Getwd(); err == nil {
+				ConfigPath = filepath.Join(cwd, ConfigPath)
+			}
+		}
+		Info["config_path"] = ConfigPath
+	}
 
 	var cfg struct {
 		Mod map[string]string `yaml:"log"`
 	}
 
-	if data != nil {
-		if err := yaml.Unmarshal(data, &cfg); err != nil {
-			println("ERROR: " + err.Error())
-		}
-	}
+	LoadConfig(&cfg)
 
 	log.Logger = NewLogger(cfg.Mod["format"], cfg.Mod["level"])
 
 	modules = cfg.Mod
 
 	log.Info().Msgf("go2rtc version %s %s/%s", Version, runtime.GOOS, runtime.GOARCH)
-
-	path, _ := os.Getwd()
-	log.Debug().Str("cwd", path).Send()
 }
 
 func NewLogger(format string, level string) zerolog.Logger {
@@ -65,7 +94,7 @@ func NewLogger(format string, level string) zerolog.Logger {
 }
 
 func LoadConfig(v interface{}) {
-	if data != nil {
+	for _, data := range configs {
 		if err := yaml.Unmarshal(data, v); err != nil {
 			log.Warn().Err(err).Msg("[app] read config")
 		}
@@ -86,8 +115,18 @@ func GetLogger(module string) zerolog.Logger {
 
 // internal
 
-// data - config content
-var data []byte
+type Config []string
+
+func (c *Config) String() string {
+	return strings.Join(*c, " ")
+}
+
+func (c *Config) Set(value string) error {
+	*c = append(*c, value)
+	return nil
+}
+
+var configs [][]byte
 
 // modules log levels
 var modules map[string]string

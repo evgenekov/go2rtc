@@ -7,18 +7,14 @@ import (
 	"github.com/AlexxIT/go2rtc/pkg/streamer"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
-
-type Consumer struct {
-	element streamer.Consumer
-	tracks  []*streamer.Track
-}
 
 type Stream struct {
 	producers []*Producer
 	consumers []*Consumer
 	mu        sync.Mutex
-	wg        sync.WaitGroup
+	requests  int32
 }
 
 func NewStream(source interface{}) *Stream {
@@ -53,15 +49,15 @@ func (s *Stream) SetSource(source string) {
 }
 
 func (s *Stream) AddConsumer(cons streamer.Consumer) (err error) {
+	// support for multiple simultaneous requests from different consumers
+	atomic.AddInt32(&s.requests, 1)
+
 	ic := len(s.consumers)
 
 	consumer := &Consumer{element: cons}
 	var producers []*Producer // matched producers for consumer
 
 	var codecs string
-
-	// support for multiple simultaneous requests from different consumers
-	s.wg.Add(1)
 
 	// Step 1. Get consumer medias
 	for icc, consMedia := range cons.GetMedias() {
@@ -86,7 +82,7 @@ func (s *Stream) AddConsumer(cons streamer.Consumer) (err error) {
 					// Step 4. Get producer track
 					prodTrack := prod.GetTrack(prodMedia, prodCodec)
 					if prodTrack == nil {
-						log.Warn().Str("url", prod.url).Msg("[stream] can't get track")
+						log.Warn().Str("url", prod.url).Msg("[streams] can't get track")
 						continue
 					}
 
@@ -101,13 +97,11 @@ func (s *Stream) AddConsumer(cons streamer.Consumer) (err error) {
 		}
 	}
 
-	s.wg.Done()
+	if atomic.AddInt32(&s.requests, -1) == 0 {
+		s.stopProducers()
+	}
 
 	if len(producers) == 0 {
-		s.wg.Wait()
-
-		s.stopProducers()
-
 		if len(codecs) > 0 {
 			return errors.New("codecs not match: " + codecs)
 		}
@@ -200,24 +194,19 @@ producers:
 func (s *Stream) MarshalJSON() ([]byte, error) {
 	if !s.mu.TryLock() {
 		log.Warn().Msgf("[streams] json locked")
-		return []byte(`null`), nil
+		return json.Marshal(nil)
 	}
 
-	var v []interface{}
-	for _, prod := range s.producers {
-		if prod.element != nil {
-			v = append(v, prod.element)
-		}
+	var info struct {
+		Producers []*Producer `json:"producers"`
+		Consumers []*Consumer `json:"consumers"`
 	}
-	for _, cons := range s.consumers {
-		// cons.element always not nil
-		v = append(v, cons.element)
-	}
+	info.Producers = s.producers
+	info.Consumers = s.consumers
+
 	s.mu.Unlock()
-	if len(v) == 0 {
-		v = nil
-	}
-	return json.Marshal(v)
+
+	return json.Marshal(info)
 }
 
 func (s *Stream) removeConsumer(i int) {

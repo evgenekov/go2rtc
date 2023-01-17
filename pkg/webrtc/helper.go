@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func NewCandidate(address string) (string, error) {
+func NewCandidate(network, address string) (string, error) {
 	i := strings.LastIndexByte(address, ':')
 	if i < 0 {
 		return "", errors.New("wrong candidate: " + address)
@@ -25,13 +25,18 @@ func NewCandidate(address string) (string, error) {
 		return "", err
 	}
 
-	cand, err := ice.NewCandidateHost(&ice.CandidateHostConfig{
-		Network:   "tcp",
+	config := &ice.CandidateHostConfig{
+		Network:   network,
 		Address:   host,
 		Port:      i,
 		Component: ice.ComponentRTP,
-		TCPType:   ice.TCPTypePassive,
-	})
+	}
+
+	if network == "tcp" {
+		config.TCPType = ice.TCPTypePassive
+	}
+
+	cand, err := ice.NewCandidateHost(config)
 	if err != nil {
 		return "", err
 	}

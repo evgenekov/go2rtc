@@ -34,8 +34,13 @@ func Init() {
 			return false
 		}
 
-		waiter <- conn
-		return true
+		// unblocking write to channel
+		select {
+		case waiter <- conn:
+			return true
+		default:
+			return false
+		}
 	})
 
 	streams.HandleFunc("exec", Handle)
@@ -86,7 +91,13 @@ func Handle(url string) (streamer.Producer, error) {
 	chErr := make(chan error)
 
 	go func() {
-		chErr <- cmd.Wait()
+		err := cmd.Wait()
+		// unblocking write to channel
+		select {
+		case chErr <- err:
+		default:
+			log.Trace().Str("url", url).Msg("[exec] close")
+		}
 	}()
 
 	select {

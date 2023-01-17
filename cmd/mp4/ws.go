@@ -18,7 +18,10 @@ func handlerWSMSE(tr *api.Transport, msg *api.Message) error {
 		return errors.New(api.StreamNotFound)
 	}
 
-	cons := &mp4.Consumer{}
+	cons := &mp4.Consumer{
+		RemoteAddr: tr.Request.RemoteAddr,
+		UserAgent:  tr.Request.UserAgent(),
+	}
 	cons.UserAgent = tr.Request.UserAgent()
 	cons.RemoteAddr = tr.Request.RemoteAddr
 
@@ -68,7 +71,7 @@ func handlerWSMP4(tr *api.Transport, msg *api.Message) error {
 		return errors.New(api.StreamNotFound)
 	}
 
-	cons := &mp4.Segment{}
+	cons := &mp4.Segment{OnlyKeyframe: true}
 
 	if codecs, ok := msg.Value.(string); ok {
 		log.Trace().Str("codecs", codecs).Msgf("[mp4] new WS/MP4 consumer")
