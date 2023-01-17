@@ -200,6 +200,15 @@ func MarshalSDP(medias []*Media) ([]byte, error) {
 				Address: "0.0.0.0",
 			},
 		},
+		TimeDescriptions: []sdp.TimeDescription{
+			{
+				Timing: sdp.Timing{
+					StartTime: 2873397496,
+					StopTime:  2873404696,
+				},
+				RepeatTimes: nil,
+			},
+		},
 	}
 
 	payloadType := uint8(96)
