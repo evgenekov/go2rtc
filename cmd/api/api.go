@@ -3,10 +3,12 @@ package api
 import (
 	"encoding/json"
 	"github.com/AlexxIT/go2rtc/cmd/app"
-	"github.com/AlexxIT/go2rtc/cmd/streams"
 	"github.com/rs/zerolog"
 	"net"
 	"net/http"
+	"os"
+	"strconv"
+	"sync"
 )
 
 func Init() {
@@ -35,7 +37,9 @@ func Init() {
 	initStatic(cfg.Mod.StaticDir)
 	initWS(cfg.Mod.Origin)
 
-	HandleFunc("api/streams", streamsHandler)
+	HandleFunc("api", apiHandler)
+	HandleFunc("api/config", configHandler)
+	HandleFunc("api/exit", exitHandler)
 	HandleFunc("api/ws", apiWS)
 
 	// ensure we can listen without errors
@@ -96,31 +100,25 @@ func middlewareCORS(next http.Handler) http.Handler {
 	})
 }
 
-func streamsHandler(w http.ResponseWriter, r *http.Request) {
-	src := r.URL.Query().Get("src")
-	name := r.URL.Query().Get("name")
+var mu sync.Mutex
 
-	if name == "" {
-		name = src
+func apiHandler(w http.ResponseWriter, r *http.Request) {
+	mu.Lock()
+	app.Info["host"] = r.Host
+	mu.Unlock()
+
+	if err := json.NewEncoder(w).Encode(app.Info); err != nil {
+		log.Warn().Err(err).Caller().Send()
 	}
+}
 
-	switch r.Method {
-	case "PUT":
-		streams.New(name, src)
+func exitHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "", http.StatusBadRequest)
 		return
-	case "DELETE":
-		streams.Delete(src)
-		return
 	}
 
-	var v interface{}
-	if src != "" {
-		v = streams.Get(src)
-	} else {
-		v = streams.All()
-	}
-
-	e := json.NewEncoder(w)
-	e.SetIndent("", "  ")
-	_ = e.Encode(v)
+	s := r.URL.Query().Get("code")
+	code, _ := strconv.Atoi(s)
+	os.Exit(code)
 }

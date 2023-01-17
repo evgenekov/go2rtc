@@ -228,15 +228,11 @@ export class VideoRTC extends HTMLElement {
         this.video.playsInline = true;
         this.video.preload = "auto";
 
-        this.appendChild(this.video);
-
-        // important for second video for mode MP4
-        this.style.display = "block";
-        this.style.position = "relative";
-
         this.video.style.display = "block"; // fix bottom margin 4px
         this.video.style.width = "100%";
         this.video.style.height = "100%"
+
+        this.appendChild(this.video);
 
         if (this.background) return;
 
@@ -392,21 +388,23 @@ export class VideoRTC extends HTMLElement {
             sb.mode = "segments"; // segments or sequence
             sb.addEventListener("updateend", () => {
                 if (sb.updating) return;
-                if (bufLen > 0) {
-                    try {
-                        sb.appendBuffer(buf.slice(0, bufLen));
-                    } catch (e) {
-                        // console.debug(e);
+
+                try {
+                    if (bufLen > 0) {
+                        const data = buf.slice(0, bufLen);
+                        bufLen = 0;
+                        sb.appendBuffer(data);
+                    } else if (sb.buffered && sb.buffered.length) {
+                        const end = sb.buffered.end(sb.buffered.length - 1) - 5;
+                        const start = sb.buffered.start(0);
+                        if (end > start) {
+                            sb.remove(start, end);
+                            ms.setLiveSeekableRange(end, end + 5);
+                        }
+                        // console.debug("VideoRTC.buffered", start, end);
                     }
-                    bufLen = 0;
-                } else if (sb.buffered && sb.buffered.length) {
-                    const end = sb.buffered.end(sb.buffered.length - 1) - 5;
-                    const start = sb.buffered.start(0);
-                    if (end > start) {
-                        sb.remove(start, end);
-                        ms.setLiveSeekableRange(end, end + 5);
-                    }
-                    // console.debug("VideoRTC.buffered", start, end);
+                } catch (e) {
+                    // console.debug(e);
                 }
             });
 
@@ -504,6 +502,8 @@ export class VideoRTC extends HTMLElement {
      * @param ev {Event}
      */
     onpcvideo(ev) {
+        if (!this.pc) return;
+
         /** @type {HTMLVideoElement} */
         const video2 = ev.target;
         const state = this.pc.connectionState;
@@ -543,46 +543,42 @@ export class VideoRTC extends HTMLElement {
 
     onmjpeg() {
         this.ondata = data => {
+            this.video.controls = false;
             this.video.poster = "data:image/jpeg;base64," + VideoRTC.btoa(data);
         };
 
         this.send({type: "mjpeg"});
-        this.video.controls = false;
     }
 
     onmp4() {
-        /** @type {HTMLVideoElement} */
-        let video2;
+        /** @type {HTMLCanvasElement} **/
+        const canvas = document.createElement("canvas");
+        /** @type {CanvasRenderingContext2D} */
+        let context;
 
-        this.ondata = data => {
-            // first video with default position (set container size)
-            // second video with position=absolute and top=0px
-            if (video2) {
-                this.removeChild(this.video);
-                this.video.src = "";
-                this.video = video2;
-                video2.style.position = "";
-                video2.style.top = "";
+        /** @type {HTMLVideoElement} */
+        const video2 = document.createElement("video");
+        video2.autoplay = true;
+        video2.muted = true;
+
+        video2.addEventListener("loadeddata", ev => {
+            if (!context) {
+                canvas.width = video2.videoWidth;
+                canvas.height = video2.videoHeight;
+                context = canvas.getContext('2d');
             }
 
-            video2 = this.video.cloneNode();
-            video2.style.position = "absolute";
-            video2.style.top = "0px";
-            this.appendChild(video2);
+            context.drawImage(video2, 0, 0, canvas.width, canvas.height);
 
-            video2.src = "data:video/mp4;base64," + VideoRTC.btoa(data);
-            video2.play().catch(() => console.log);
-        };
-
-        this.ws.addEventListener("close", () => {
-            if (!video2) return;
-
-            this.removeChild(video2);
-            video2.src = "";
+            this.video.controls = false;
+            this.video.poster = canvas.toDataURL("image/jpeg");
         });
 
+        this.ondata = data => {
+            video2.src = "data:video/mp4;base64," + VideoRTC.btoa(data);
+        };
+
         this.send({type: "mp4", value: this.codecs("mp4")});
-        this.video.controls = false;
     }
 
     static btoa(buffer) {

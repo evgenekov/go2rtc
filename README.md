@@ -9,7 +9,7 @@ Ultimate camera streaming application with support RTSP, WebRTC, HomeKit, FFmpeg
 - streaming from [RTSP](#source-rtsp), [RTMP](#source-rtmp), [HTTP](#source-http) (FLV/MJPEG/JPEG), [FFmpeg](#source-ffmpeg), [USB Cameras](#source-ffmpeg-device) and [other sources](#module-streams)
 - streaming to [RTSP](#module-rtsp), [WebRTC](#module-webrtc), [MSE/MP4](#module-mp4) or [MJPEG](#module-mjpeg)
 - first project in the World with support streaming from [HomeKit Cameras](#source-homekit)
-- first project in the World with support H265 for WebRTC in browser ([read more](https://github.com/AlexxIT/Blog/issues/5))
+- first project in the World with support H265 for WebRTC in browser (Safari only, [read more](https://github.com/AlexxIT/Blog/issues/5))
 - on the fly transcoding for unsupported codecs via [FFmpeg](#source-ffmpeg)
 - multi-source 2-way [codecs negotiation](#codecs-negotiation)
    - mixing tracks from different sources to single stream
@@ -37,7 +37,6 @@ Ultimate camera streaming application with support RTSP, WebRTC, HomeKit, FFmpeg
 - add your [streams](#module-streams) to [config](#configuration) file
 - setup [external access](#module-webrtc) to webrtc
 - setup [external access](#module-ngrok) to web interface
-- install [ffmpeg](#source-ffmpeg) for transcoding
 
 **Developers:**
 
@@ -50,7 +49,6 @@ Download binary for your OS from [latest release](https://github.com/AlexxIT/go2
 
 - `go2rtc_win64.zip` - Windows 64-bit
 - `go2rtc_win32.zip` - Windows 32-bit
-- `go2rtc_win_arm64.zip` - Windows ARM 64-bit
 - `go2rtc_linux_amd64` - Linux 64-bit
 - `go2rtc_linux_i386` - Linux 32-bit
 - `go2rtc_linux_arm64` - Linux ARM 64-bit (ex. Raspberry 64-bit OS)
@@ -72,27 +70,17 @@ Don't forget to fix the rights `chmod +x go2rtc_xxx_xxx` on Linux and Mac.
 
 ### go2rtc: Docker
 
-Container [alexxit/go2rtc](https://hub.docker.com/r/alexxit/go2rtc) with support `amd64`, `386`, `arm64`, `arm`. This container same as [Home Assistant Add-on](#go2rtc-home-assistant-add-on), but can be used separately from the Home Assistant. Container has preinstalled [FFmpeg](#source-ffmpeg), [Ngrok](#module-ngrok) and [Python](#source-echo).
-
-```yaml
-services:
-  go2rtc:
-    image: alexxit/go2rtc
-    network_mode: host
-    restart: always
-    volumes:
-      - "~/go2rtc.yaml:/config/go2rtc.yaml"
-```
+Container [alexxit/go2rtc](https://hub.docker.com/r/alexxit/go2rtc) with support `amd64`, `386`, `arm64`, `arm`. This container is the same as [Home Assistant Add-on](#go2rtc-home-assistant-add-on), but can be used separately from Home Assistant. Container has preinstalled [FFmpeg](#source-ffmpeg), [Ngrok](#module-ngrok) and [Python](#source-echo).
 
 ## Configuration
 
-Create file `go2rtc.yaml` next to the app.
+Create file `go2rtc.yaml`. go2rtc will search this file in current work dirrectory by default.
 
 - by default, you need to config only your `streams` links
-- `api` server will start on default **1984 port**
-- `rtsp` server will start on default **8554 port**
-- `webrtc` will use random UDP port for each connection
-- `ffmpeg` will use default transcoding options (you may install it [manually](https://ffmpeg.org/))
+- `api` server will start on default **1984 port** (TCP)
+- `rtsp` server will start on default **8554 port** (TCP)
+- `webrtc` will use port **8555** (TCP/UDP) for connections
+- `ffmpeg` will use default transcoding options
 
 Available modules:
 
@@ -106,6 +94,8 @@ Available modules:
 - [ngrok](#module-ngrok) - Ngrok integration (external access for private network)
 - [hass](#module-hass) - Home Assistant integration
 - [log](#module-log) - logs config
+
+Full default config [example](https://github.com/AlexxIT/go2rtc/wiki/Configuration).
 
 ### Module: Streams
 
@@ -216,7 +206,7 @@ But you can override them via YAML config. You can also add your own formats to 
 
 ```yaml
 ffmpeg:
-  bin: ffmpeg                                        # path to ffmpeg binary
+  bin: ffmpeg  # path to ffmpeg binary
   h264: "-codec:v libx264 -g:v 30 -preset:v superfast -tune:v zerolatency -profile:v main -level:v 4.1"
   mycodec: "-any args that support ffmpeg..."
 ```
@@ -224,7 +214,10 @@ ffmpeg:
 - You can use `video` and `audio` params multiple times (ex. `#video=copy#audio=copy#audio=pcmu`)
 - You can use go2rtc stream name as ffmpeg input (ex. `ffmpeg:camera1#video=h264`)
 - You can use `rotate` params with `90`, `180`, `270` or `-90` values, important with transcoding (ex. `#video=h264#rotate=90`)
+- You can use `width` and/or `height` params, important with transcoding (ex. `#video=h264#width=1280`)
 - You can use `raw` param for any additional FFmpeg arguments (ex. `#raw=-vf transpose=1`).
+
+Read more about encoding [hardware acceleration](https://github.com/AlexxIT/go2rtc/wiki/Hardware-acceleration).
 
 #### Source: FFmpeg Device
 
@@ -371,13 +364,12 @@ api:
   origin: "*"        # default "", allow CORS requests (only * supported)
 ```
 
-**PS. go2rtc** doesn't provide HTTPS or password protection. Use [Nginx](https://nginx.org/) or [Ngrok](#module-ngrok) or [Home Assistant Add-on](#go2rtc-home-assistant-add-on) for this tasks.
+**PS:**
 
-**PS2.** You can access microphone (for 2-way audio) only with HTTPS ([read more](https://stackoverflow.com/questions/52759992/how-to-access-camera-and-microphone-in-chrome-without-https)).
-
-**PS3.** MJPEG over WebSocket plays better than native MJPEG because Chrome [bug](https://bugs.chromium.org/p/chromium/issues/detail?id=527446).
-
-**PS4.** MP4 over WebSocket was created only for Apple iOS because it doesn't support MSE and native MP4.
+- go2rtc doesn't provide HTTPS or password protection. Use [Nginx](https://nginx.org/) or [Ngrok](#module-ngrok) or [Home Assistant Add-on](#go2rtc-home-assistant-add-on) for this tasks
+- you can access microphone (for 2-way audio) only with HTTPS ([read more](https://stackoverflow.com/questions/52759992/how-to-access-camera-and-microphone-in-chrome-without-https))
+- MJPEG over WebSocket plays better than native MJPEG because Chrome [bug](https://bugs.chromium.org/p/chromium/issues/detail?id=527446)
+- MP4 over WebSocket was created only for Apple iOS because it doesn't support MSE and native MP4
 
 ### Module: RTSP
 
@@ -401,45 +393,43 @@ rtsp:
 
 WebRTC usually works without problems in the local network. But external access may require additional settings. It depends on what type of Internet do you have.
 
-- by default, WebRTC use two random UDP ports for each connection (video and audio)
-- you can enable one additional TCP port for all connections and use it for external access
+- by default, WebRTC uses both TCP and UDP on port 8555 for connections
+- you can use this port for external access
+- you can change the port in YAML config:
+
+```yaml
+webrtc:
+  listen: ":8555" # address of your local server and port (TCP/UDP)
+```
 
 **Static public IP**
 
-- add some TCP port to YAML config (ex. 8555)
-- forward this port on your router (you can use same 8555 port or any other)
+- forward the port 8555 on your router (you can use same 8555 port or any other as external port)
 - add your external IP-address and external port to YAML config
 
 ```yaml
 webrtc:
-  listen: ":8555"  # address of your local server (TCP)
   candidates:
     - 216.58.210.174:8555  # if you have static public IP-address
 ```
 
 **Dynamic public IP**
 
-- add some TCP port to YAML config (ex. 8555)
-- forward this port on your router (you can use same 8555 port or any other)
+- forward the port 8555 on your router (you can use same 8555 port or any other as the external port)
 - add `stun` word and external port to YAML config
   - go2rtc automatically detects your external address with STUN-server
 
 ```yaml
 webrtc:
-  listen: ":8555"  # address of your local server (TCP)
   candidates:
     - stun:8555  # if you have dynamic public IP-address
 ```
 
 **Private IP**
 
-- add some TCP port to YAML config (ex. 8555)
 - setup integration with [Ngrok service](#module-ngrok)
 
 ```yaml
-webrtc:
-  listen: ":8555"  # address of your local server (TCP)
-
 ngrok:
   command: ...
 ```
@@ -550,8 +540,13 @@ PS. Default Home Assistant lovelace cards don't support 2-way audio. You can use
 Provides several features:
 
 1. MSE stream (fMP4 over WebSocket)
-2. Camera snapshots in MP4 format (single frame), can be sent to [Telegram](https://www.telegram.org/)
-3. MP4 "file stream" - bad format for streaming because of high latency, doesn't work in Safari 
+2. Camera snapshots in MP4 format (single frame), can be sent to [Telegram](https://github.com/AlexxIT/go2rtc/wiki/Snapshot-to-Telegram)
+3. MP4 "file stream" - bad format for streaming because of high start delay, doesn't work in Safari 
+
+API examples:
+
+- MP4 stream: `http://192.168.1.123:1984/api/stream.mp4?src=camera1`
+- MP4 snapshot: `http://192.168.1.123:1984/api/frame.mp4?src=camera1`
 
 ### Module: MJPEG
 
@@ -595,7 +590,7 @@ log:
 
 ## Security
 
-By default `go2rtc` start Web interface on port `1984` and RTSP on port `8554`. Both ports are accessible from your local network. So anyone on your local network can watch video from your cameras without authorization. The same rule applies to the Home Assistant Add-on.
+By default `go2rtc` starts the Web interface on port `1984` and RTSP on port `8554`, as well as use port `8555` for WebRTC connections. The three ports are accessible from your local network. So anyone on your local network can watch video from your cameras without authorization. The same rule applies to the Home Assistant Add-on.
 
 This is not a problem if you trust your local network as much as I do. But you can change this behaviour with a `go2rtc.yaml` config:
 
@@ -607,7 +602,7 @@ rtsp:
   listen: "127.0.0.1:8554" # localhost
 
 webrtc:
-  listen: ":8555" # external TCP port
+  listen: ":8555" # external TCP/UDP port
 ```
 
 - local access to RTSP is not a problem for [FFmpeg](#source-ffmpeg) integration, because it runs locally on your server
@@ -617,7 +612,7 @@ webrtc:
 
 If you need Web interface protection without Home Assistant Add-on - you need to use reverse proxy, like [Nginx](https://nginx.org/), [Caddy](https://caddyserver.com/), [Ngrok](https://ngrok.com/), etc.
 
-PS. Additionally WebRTC opens a lot of random UDP ports for transmit encrypted media. They work without problems on the local network. And sometimes work for external access, even if you haven't opened ports on your router. But for stable external WebRTC access, you need to configure the TCP port.
+PS. Additionally WebRTC will try to use the 8555 UDP port for transmit encrypted media. It works without problems on the local network. And sometimes also works for external access, even if you haven't opened this port on your router ([read more](https://en.wikipedia.org/wiki/UDP_hole_punching)). But for stable external WebRTC access, you need to open the 8555 port on your router for both TCP and UDP.
 
 ## Codecs madness
 
@@ -686,6 +681,10 @@ streams:
 
 - `ffplay -fflags nobuffer -flags low_delay "rtsp://192.168.1.123:8554/camera1"`
 - VLC > Preferences > Input / Codecs > Default Caching Level: Lowest Latency
+
+**Snapshots to Telegram**
+
+[read more](https://github.com/AlexxIT/go2rtc/wiki/Snapshot-to-Telegram)
 
 ## FAQ
 
