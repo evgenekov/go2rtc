@@ -184,17 +184,16 @@ func UnmarshalSDP(rawSDP []byte) ([]*Media, error) {
 }
 
 func MarshalSDP(medias []*Media) ([]byte, error) {
-	sd := &sdp.SessionDescription{}
-
-	origin := sdp.Origin{
-		Username:	"-",
-		SessionID:	uint64(0),
-		SessionVersion:	uint64(0),
-		NetworkType:    "IN",
-		AddressType:    "IP4",
-		UnicastAddress: "0.0.0.0",
+	sd := &sdp.SessionDescription{
+		Origin: sdp.Origin{
+			Username:	"-",
+			SessionID:	uint64(0),
+			SessionVersion:	uint64(0),
+			NetworkType:    "IN",
+			AddressType:    "IP4",
+			UnicastAddress: "0.0.0.0",
+		}
 	}
-	sd.Origin = origin
 
 	payloadType := uint8(96)
 
