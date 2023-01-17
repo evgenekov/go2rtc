@@ -235,6 +235,10 @@ func MarshalSDP(medias []*Media) ([]byte, error) {
 
 		sd.MediaDescriptions = append(sd.MediaDescriptions, md)
 
+		sd.Attributes = []sdp.Attribute{
+					sdp.NewAttribute("control", "trackID=0"),
+				}
+
 		payloadType++
 	}
 
