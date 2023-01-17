@@ -883,6 +883,7 @@ type RTCP struct {
 }
 
 const sdpHeader = `v=0
+o=- 0 0 IN IP4 0.0.0.0
 s=-
 t=0 0`
 
@@ -898,6 +899,14 @@ func UnmarshalSDP(rawSDP []byte) ([]*streamer.Media, error) {
 		if err != nil {
 			return nil, err
 		}
+		i := bytes.Index(rawSDP, []byte("\o="))
+                if i > 0 {
+                        rawSDP = append([]byte(sdpHeader), rawSDP[i:]...)
+                        medias, err = streamer.UnmarshalSDP(rawSDP)
+                }
+                if err != nil {
+                        return nil, err
+                }
 	}
 
 	// fix bug in ONVIF spec
