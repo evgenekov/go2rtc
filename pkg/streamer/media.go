@@ -203,8 +203,8 @@ func MarshalSDP(medias []*Media) ([]byte, error) {
 		TimeDescriptions: []sdp.TimeDescription{
 			{
 				Timing: sdp.Timing{
-					StartTime: 2873397496,
-					StopTime:  2873404696,
+					StartTime: 0,
+					StopTime:  0,
 				},
 				RepeatTimes: nil,
 			},
