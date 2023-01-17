@@ -257,6 +257,14 @@ func (c *Conn) Response(res *tcp.Response) error {
 		}
 	}
 
+	if res.Request != nil && res.Request.Header != nil {
+		url := res.Request.URL.String()
+		if url != "" {
+			url += "/"
+			res.Header.Set("Content-Base", url)
+		}
+	}
+
 	if c.Session != "" {
 		res.Header.Set("Session", c.Session)
 	}
@@ -265,6 +273,8 @@ func (c *Conn) Response(res *tcp.Response) error {
 		val := strconv.Itoa(len(res.Body))
 		res.Header.Set("Content-Length", val)
 	}
+
+	res.Header.Set("Server", "go2rtc")
 
 	c.Fire(res)
 
