@@ -883,7 +883,6 @@ type RTCP struct {
 }
 
 const sdpHeader = `v=0
-o=-
 s=-
 t=0 0`
 
