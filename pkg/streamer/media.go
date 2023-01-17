@@ -192,7 +192,7 @@ func MarshalSDP(medias []*Media) ([]byte, error) {
 			NetworkType:    "IN",
 			AddressType:    "IP4",
 			UnicastAddress: "0.0.0.0",
-		}
+		},
 	}
 
 	payloadType := uint8(96)

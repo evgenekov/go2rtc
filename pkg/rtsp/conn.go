@@ -899,14 +899,6 @@ func UnmarshalSDP(rawSDP []byte) ([]*streamer.Media, error) {
 		if err != nil {
 			return nil, err
 		}
-		i := bytes.Index(rawSDP, []byte("\o="))
-                if i > 0 {
-                        rawSDP = append([]byte(sdpHeader), rawSDP[i:]...)
-                        medias, err = streamer.UnmarshalSDP(rawSDP)
-                }
-                if err != nil {
-                        return nil, err
-                }
 	}
 
 	// fix bug in ONVIF spec
