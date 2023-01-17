@@ -186,7 +186,7 @@ func UnmarshalSDP(rawSDP []byte) ([]*Media, error) {
 func MarshalSDP(medias []*Media) ([]byte, error) {
 	sd := &sdp.SessionDescription{}
 
-	origin := &sdp.Origin{
+	origin := sdp.Origin{
 		Username:	"-",
 		SessionID:	uint64(0),
 		SessionVersion:	uint64(0),
